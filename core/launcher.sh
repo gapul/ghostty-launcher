@@ -5,6 +5,11 @@ LAUNCHER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SEARCH="$LAUNCHER_DIR/core/search.sh"
 OS="$(uname)"
 
+command -v fzf >/dev/null 2>&1 || {
+    printf 'launcher: fzf not found. Install it with: brew install fzf\n' >&2
+    exit 1
+}
+
 # Close the launcher window (terminal-specific)
 _close() {
     if   [ -n "$GHOSTTY_QUICK_TERMINAL" ]; then
@@ -19,10 +24,26 @@ _close() {
     fi
 }
 
-# Open a file or app (OS-specific)
+# Open a file (OS-specific)
 _open() {
     if [ "$OS" = "Darwin" ]; then open "$@"
     else xdg-open "$@" 2>/dev/null
+    fi
+}
+
+# Open an app by name (OS-specific; different from opening a file)
+_open_app() {
+    if [ "$OS" = "Darwin" ]; then
+        open -a "$1"
+    else
+        # Look up the .desktop file for this app name, then launch it
+        local desktop
+        desktop=$(grep -rl "^Name=$1$" \
+            /usr/share/applications "$HOME/.local/share/applications" 2>/dev/null \
+            | head -1)
+        if [ -n "$desktop" ]; then
+            gtk-launch "$(basename "$desktop" .desktop)" 2>/dev/null &
+        fi
     fi
 }
 
@@ -32,6 +53,14 @@ _copy() {
     elif command -v xclip  >/dev/null 2>&1; then printf '%s' "$1" | xclip -selection clipboard
     elif command -v xsel   >/dev/null 2>&1; then printf '%s' "$1" | xsel --clipboard --input
     fi
+}
+
+# URL-encode a string
+_urlencode() {
+    python3 -c \
+        "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1],safe=''))" \
+        "$1" 2>/dev/null \
+    || printf '%s' "$1" | sed 's/ /+/g; s/[^a-zA-Z0-9+._~-]//g'
 }
 
 # fzf UI
@@ -74,7 +103,7 @@ value="${display:2}"  # strip icon + space
 
 case "$type" in
     APP)
-        _open -a "$value"
+        _open_app "$value"
         sleep 0.4
         ;;
     FILE)
@@ -94,11 +123,7 @@ case "$type" in
         _close
         ;;
     WEB)
-        query="${value#DuckDuckGo: }"
-        encoded=$(python3 -c \
-            "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1],safe=''))" \
-            "$query" 2>/dev/null)
-        _open "https://duckduckgo.com/?q=$encoded"
+        _open "https://duckduckgo.com/?q=$(_urlencode "${value#DuckDuckGo: }")"
         sleep 0.4
         ;;
     SYS_LOCK)

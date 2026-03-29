@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Launcher search — outputs "TYPE|ICON display_text" lines to stdout
+LAUNCHER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 QUERY="$1"
 
 WEB_ICON='󰖟'
@@ -142,7 +143,8 @@ build_apps_cache() {
             printf 'APP|%s %s\n' "$(get_app_icon "Finder")" "Finder"
         # Linux
         for dir in /usr/share/applications "$HOME/.local/share/applications"; do
-            [ -d "$dir" ] && grep -rl '^Name=' "$dir"/*.desktop 2>/dev/null \
+            [ -d "$dir" ] || continue
+            find "$dir" -maxdepth 1 -name '*.desktop' 2>/dev/null \
                 | while IFS= read -r f; do
                     name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
                     [ -n "$name" ] && printf 'APP|%s %s\n' "$(get_app_icon "$name")" "$name"
@@ -201,7 +203,7 @@ EOF
 }
 
 search_aliases() {
-    local alias_file="$HOME/.config/launcher/app_aliases.txt"
+    local alias_file="$LAUNCHER_DIR/app_aliases.txt"
     [ -f "$alias_file" ] || return
     while IFS=: read -r alias appname; do
         case "$alias" in '#'*|'') continue ;; esac
@@ -226,7 +228,7 @@ search_files() {
     if command -v mdfind >/dev/null 2>&1; then
         mdfind -onlyin "$HOME" -name "$QUERY" 2>/dev/null
     elif command -v locate >/dev/null 2>&1; then
-        locate -i -l 30 "$QUERY" 2>/dev/null | grep "^$HOME"
+        locate -i "$QUERY" 2>/dev/null | grep "^$HOME" | head -30
     fi \
         | grep -v "^$HOME/Library" \
         | grep -v '\.app$' | grep -v '\.app/Contents' \
