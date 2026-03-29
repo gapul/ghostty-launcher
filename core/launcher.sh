@@ -104,10 +104,9 @@ selected=$(fzf \
     --bind="change:reload($SEARCH {q})" \
     --bind="esc:abort" \
     --bind="ctrl-c:abort" \
-    --bind="ctrl-[:abort" \
     --bind="?:toggle-preview" \
     --preview="$_PREVIEW {}" \
-    --preview-window="right:40%:wrap" \
+    --preview-window="right:40%:wrap:hidden" \
     --color="$_fzf_colors"
 )
 
