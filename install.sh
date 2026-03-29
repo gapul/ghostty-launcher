@@ -14,7 +14,8 @@ section "Launcher install"
 
 chmod +x "$LAUNCHER_DIR/core/launcher.sh" \
          "$LAUNCHER_DIR/core/search.sh" \
-         "$LAUNCHER_DIR/core/restart.sh"
+         "$LAUNCHER_DIR/core/restart.sh" \
+         "$LAUNCHER_DIR/core/preview.sh"
 info "permissions set"
 
 # ── Rust search binary ──────────────────────────────────────────────────

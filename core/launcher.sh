@@ -83,6 +83,8 @@ else
     _fzf_colors="bg:#1e1e2e,bg+:#313244,border:#6e6a86,fg:#cad3f5,fg+:#cad3f5,gutter:#1e1e2e,hl:#8aadf4,hl+:#8aadf4,prompt:#c6a0f6,pointer:#ed8796,label:#c6a0f6"
 fi
 
+_PREVIEW="$LAUNCHER_DIR/core/preview.sh"
+
 # fzf UI
 selected=$(fzf \
     --prompt="  " \
@@ -102,6 +104,9 @@ selected=$(fzf \
     --bind="change:reload($SEARCH {q})" \
     --bind="esc:abort" \
     --bind="ctrl-c:abort" \
+    --bind="ctrl-p:toggle-preview" \
+    --preview="$_PREVIEW {}" \
+    --preview-window="right:40%:wrap" \
     --color="$_fzf_colors"
 )
 

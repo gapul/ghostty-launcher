@@ -125,10 +125,15 @@ fn load_frecency(path: &Path) -> HashMap<String, (u32, u64)> {
     db
 }
 
+const FRECENCY_MAX_AGE_DAYS: u64 = 90;
+
 fn save_frecency(path: &Path, db: &HashMap<String, (u32, u64)>) {
+    let cutoff = now_secs().saturating_sub(FRECENCY_MAX_AGE_DAYS * 86400);
     let Ok(mut f) = fs::File::create(path) else { return };
-    for (key, (count, ts)) in db {
-        let _ = writeln!(f, "{}\t{}\t{}", count, ts, key);
+    for (key, &(count, ts)) in db {
+        if ts >= cutoff {
+            let _ = writeln!(f, "{}\t{}\t{}", count, ts, key);
+        }
     }
 }
 
