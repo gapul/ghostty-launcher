@@ -1,0 +1,22 @@
+# Launcher configuration
+
+[search]
+# Minimum query length to trigger file search
+min_query_for_files = 3
+# Maximum file results to show
+max_file_results = 15
+# Maximum recent files to show (empty query)
+max_recent_results = 10
+# File search excludes: patterns matched against the full path
+exclude_patterns = ["/Library/", "node_modules", "/."]
+
+[aliases]
+# App aliases: alias = "Exact App Name"
+vscode = "Visual Studio Code"
+code = "Visual Studio Code"
+chrome = "Google Chrome"
+brave = "Brave Browser"
+firefox = "Firefox Developer Edition"
+ff = "Firefox Developer Edition"
+studio = "Android Studio"
+finder = "Finder"

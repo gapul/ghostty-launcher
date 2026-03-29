@@ -1,0 +1,18 @@
+[package]
+name = "launcher-search"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "launcher-search"
+path = "src/main.rs"
+
+[dependencies]
+evalexpr = "11"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = true

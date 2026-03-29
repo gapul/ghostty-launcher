@@ -2,7 +2,13 @@
 # Launcher core — shell & terminal agnostic (bash 3.2+)
 
 LAUNCHER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SEARCH="$LAUNCHER_DIR/core/search.sh"
+export LAUNCHER_DIR
+# Use the Rust binary if built, otherwise fall back to the shell script
+if [ -x "$LAUNCHER_DIR/core/launcher-search" ]; then
+    SEARCH="$LAUNCHER_DIR/core/launcher-search"
+else
+    SEARCH="$LAUNCHER_DIR/core/search.sh"
+fi
 OS="$(uname)"
 
 command -v fzf >/dev/null 2>&1 || {

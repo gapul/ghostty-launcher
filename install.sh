@@ -17,6 +17,22 @@ chmod +x "$LAUNCHER_DIR/core/launcher.sh" \
          "$LAUNCHER_DIR/core/restart.sh"
 info "permissions set"
 
+# ── Rust search binary ──────────────────────────────────────────────────
+section "Building search binary"
+
+SEARCH_SRC="$LAUNCHER_DIR/launcher-search"
+SEARCH_BIN="$LAUNCHER_DIR/core/launcher-search"
+
+if [ -d "$SEARCH_SRC" ] && command -v cargo >/dev/null 2>&1; then
+    (cd "$SEARCH_SRC" && cargo build --release 2>&1 | grep -E '^(error|warning:|Compiling|Finished)') && \
+        cp "$SEARCH_SRC/target/release/launcher-search" "$SEARCH_BIN" && \
+        chmod +x "$SEARCH_BIN" && \
+        info "Rust search binary built → core/launcher-search" || \
+        warn "Build failed — falling back to search.sh"
+elif [ -d "$SEARCH_SRC" ]; then
+    warn "cargo not found — skipping Rust build (using search.sh fallback)"
+fi
+
 # ── Shell setup ─────────────────────────────────────────────────────────
 section "Shell setup"
 
