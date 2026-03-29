@@ -4,6 +4,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Deserialize;
@@ -403,23 +404,43 @@ fn list_recent(config: &Config) -> Vec<String> {
     }
 
     let home = env::var("HOME").unwrap_or_default();
+    let exclude = &config.search.exclude_patterns;
+    let max = config.search.max_recent_results;
     let mut lines = Vec::new();
 
-    if cfg!(target_os = "macos") {
-        if let Ok(output) = Command::new("mdfind")
+    let raw = if cfg!(target_os = "macos") && spotlight_enabled() {
+        Command::new("mdfind")
             .args(["-onlyin", &home, "kMDItemLastUsedDate >= $time.today(-7)"])
             .output()
-        {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let exclude = &config.search.exclude_patterns;
-            for path_str in stdout.lines() {
-                if lines.len() >= config.search.max_recent_results { break; }
-                if path_str.ends_with(".app") { continue; }
-                if exclude.iter().any(|p| path_str.contains(p.as_str())) { continue; }
-                let path = Path::new(path_str);
-                lines.push(format!("FILE|{} {}", file_icon(path), path_str));
-            }
-        }
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .unwrap_or_default()
+    } else {
+        // find files modified within 7 days, skip hidden dirs and noise
+        Command::new("find")
+            .args([
+                &home,
+                "-maxdepth", "5",
+                "(", "-name", ".git",
+                     "-o", "-name", "node_modules",
+                     "-o", "-name", "target",
+                     "-o", "-name", ".cursor",
+                     "-o", "-name", "Library",
+                ")", "-prune", "-o",
+                "-not", "-name", ".*",
+                "-not", "-type", "d",
+                "-mtime", "-7",
+                "-print",
+            ])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .unwrap_or_default()
+    };
+
+    for path_str in raw.lines() {
+        if lines.len() >= max { break; }
+        if path_str.ends_with(".app") { continue; }
+        if exclude.iter().any(|p| path_str.contains(p.as_str())) { continue; }
+        lines.push(format!("FILE|{} {}", file_icon(Path::new(path_str)), path_str));
     }
 
     if let Ok(mut f) = fs::File::create(RECENT_CACHE) {
@@ -583,30 +604,121 @@ fn search_aliases(query_lower: &str, config: &Config) -> Vec<String> {
         .collect()
 }
 
+// ── Spotlight / file-search backend ──────────────────────────────────────
+
+static SPOTLIGHT_OK: OnceLock<bool> = OnceLock::new();
+
+/// Returns true if Spotlight indexing is enabled on the root volume.
+fn spotlight_enabled() -> bool {
+    *SPOTLIGHT_OK.get_or_init(|| {
+        Command::new("mdutil")
+            .args(["-s", "/"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains("enabled"))
+            .unwrap_or(false)
+    })
+}
+
+fn cmd_exists(name: &str) -> bool {
+    Command::new("which").arg(name).output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// find-based fallback: prune noisy dirs, case-insensitive name glob.
+fn find_by_name(home: &str, query: &str, max_results: usize) -> String {
+    // Prune dirs that produce noise. The -prune branches never print.
+    let prune_names = [
+        ".git", "node_modules", "target", ".cursor", ".venv",
+        "venv", "__pycache__", ".npm",
+    ];
+    let mut args: Vec<String> = vec![
+        home.to_string(),
+        "-maxdepth".into(), "6".into(),
+        "(".into(),
+    ];
+    for (i, name) in prune_names.iter().enumerate() {
+        if i > 0 { args.push("-o".into()); }
+        args.push("-name".into());
+        args.push(name.to_string());
+    }
+    args.extend([
+        ")".into(), "-prune".into(), "-o".into(),
+        "-iname".into(), format!("*{}*", query),
+        "-print".into(),
+    ]);
+
+    let out = Command::new("find")
+        .args(&args)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default();
+
+    // Limit lines early to avoid processing thousands of matches
+    out.lines()
+        .take(max_results * 4)   // extra room for post-filtering
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 // ── File search ───────────────────────────────────────────────────────────
 
 fn search_files(query: &str, config: &Config) -> Vec<String> {
     let home = env::var("HOME").unwrap_or_default();
     let exclude = &config.search.exclude_patterns;
-    let mut results = Vec::new();
+    let max = config.search.max_file_results;
 
-    let raw = if cfg!(target_os = "macos") {
-        Command::new("mdfind")
-            .args(["-onlyin", &home, "-name", query])
-            .output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-            .unwrap_or_default()
+    let raw: String = if cfg!(target_os = "macos") {
+        if spotlight_enabled() {
+            Command::new("mdfind")
+                .args(["-onlyin", &home, "-name", query])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+                .unwrap_or_default()
+        } else if cmd_exists("fd") {
+            Command::new("fd")
+                .args(["--base-directory", &home, "-I", "--max-depth", "6", "-i", query])
+                .output()
+                .map(|o| {
+                    String::from_utf8_lossy(&o.stdout)
+                        .lines()
+                        .map(|l| format!("{}/{}", home, l))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .unwrap_or_default()
+        } else {
+            find_by_name(&home, query, max)
+        }
     } else {
-        Command::new("locate")
+        // Linux: locate → fd → find
+        let locate_out = Command::new("locate")
             .args(["-i", query])
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        if !locate_out.trim().is_empty() {
+            locate_out
+        } else if cmd_exists("fd") {
+            Command::new("fd")
+                .args(["--base-directory", &home, "-I", "--max-depth", "6", "-i", query])
+                .output()
+                .map(|o| {
+                    String::from_utf8_lossy(&o.stdout)
+                        .lines()
+                        .map(|l| format!("{}/{}", home, l))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .unwrap_or_default()
+        } else {
+            find_by_name(&home, query, max)
+        }
     };
 
+    let mut results = Vec::new();
     for path_str in raw.lines() {
-        if results.len() >= config.search.max_file_results { break; }
-        if !cfg!(target_os = "macos") && !path_str.starts_with(&home) { continue; }
+        if results.len() >= max { break; }
         if path_str.ends_with(".app") || path_str.contains(".app/Contents") { continue; }
         if exclude.iter().any(|p| path_str.contains(p.as_str())) { continue; }
         results.push(format!("FILE|{} {}", file_icon(Path::new(path_str)), path_str));
