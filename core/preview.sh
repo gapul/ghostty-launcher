@@ -65,7 +65,11 @@ FILE)
         case "$ext" in
             jpg|jpeg|png|gif|webp|heic|bmp|tiff)
                 if command -v chafa >/dev/null 2>&1; then
-                    chafa --size="$(tput cols)x$(($(tput lines) - 2))" "$value" 2>/dev/null
+                    # --format=symbols: ANSI block chars (works in fzf preview)
+                    # Kitty/sixel protocols are not supported inside fzf panes
+                    cols="${FZF_PREVIEW_COLUMNS:-$(tput cols)}"
+                    lines="${FZF_PREVIEW_LINES:-$(($(tput lines) - 4))}"
+                    chafa --format=symbols --size="${cols}x${lines}" "$value" 2>/dev/null
                 else
                     file "$value"
                     printf '\n%s\n' "$(dim "(install chafa for image preview)")"
