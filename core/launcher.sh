@@ -106,7 +106,7 @@ selected=$(fzf \
     --bind="ctrl-c:abort" \
     --bind="?:toggle-preview" \
     --preview="$_PREVIEW {}" \
-    --preview-window="right:40%:wrap:hidden" \
+    --preview-window="right:40%:wrap" \
     --color="$_fzf_colors"
 )
 
