@@ -567,6 +567,29 @@ fn normalize_division(expr: &str) -> String {
     result
 }
 
+// ── Color detection ───────────────────────────────────────────────────────
+
+/// Detect CSS color codes: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla()
+fn search_color(query: &str) -> Option<String> {
+    let q = query.trim();
+
+    // Hex color: #rgb, #rrggbb, #rrggbbaa
+    if let Some(hex) = q.strip_prefix('#') {
+        if matches!(hex.len(), 3 | 6 | 8) && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Some(format!("COLOR|\u{f0765} {}", q));
+        }
+    }
+
+    // rgb() / rgba() / hsl() / hsla()
+    let ql = q.to_lowercase();
+    let color_fns = ["rgb(", "rgba(", "hsl(", "hsla("];
+    if ql.ends_with(')') && color_fns.iter().any(|f| ql.starts_with(f)) {
+        return Some(format!("COLOR|\u{f0765} {}", q));
+    }
+
+    None
+}
+
 fn search_calc(query: &str) -> Option<String> {
     if !query.chars().any(|c| c.is_ascii_digit()) {
         return None;
@@ -825,6 +848,11 @@ fn main() {
     }
 
     // Phase 1: fast results (in-memory / cache)
+
+    // Color code
+    if let Some(color) = search_color(&query) {
+        emit!(color);
+    }
 
     // Calculator
     if query.chars().any(|c| c.is_ascii_digit()) {

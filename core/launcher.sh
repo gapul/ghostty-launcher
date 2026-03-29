@@ -133,6 +133,10 @@ case "$type" in
         _open "$value"
         sleep 0.4
         ;;
+    COLOR)
+        _copy "$value"
+        _close
+        ;;
     CALC)
         _copy "${value#= }"
         _close
