@@ -1,0 +1,13 @@
+# アプリ通称エイリアス（alias:正式名）
+# このファイルを編集することで自由に追加できます
+
+vscode:Visual Studio Code
+code:Visual Studio Code
+vs code:Visual Studio Code
+chrome:Google Chrome
+brave:Brave Browser
+firefox:Firefox Developer Edition
+ff:Firefox Developer Edition
+android studio:Android Studio
+studio:Android Studio
+finder:Finder

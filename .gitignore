@@ -1,0 +1,5 @@
+# ダウンロード生成物（install.fish で取得）
+icon_map.sh
+
+# ランタイムキャッシュ（/tmp に生成されるが念のため）
+*.cache
