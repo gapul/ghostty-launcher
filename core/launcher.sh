@@ -3,12 +3,15 @@
 
 LAUNCHER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export LAUNCHER_DIR
+
 # Use the Rust binary if built, otherwise fall back to the shell script
-if [ -x "$LAUNCHER_DIR/core/launcher-search" ]; then
-    SEARCH="$LAUNCHER_DIR/core/launcher-search"
+_BIN="$LAUNCHER_DIR/core/launcher-search"
+if [ -x "$_BIN" ]; then
+    SEARCH="$_BIN"
 else
     SEARCH="$LAUNCHER_DIR/core/search.sh"
 fi
+
 OS="$(uname)"
 
 command -v fzf >/dev/null 2>&1 || {
@@ -37,12 +40,11 @@ _open() {
     fi
 }
 
-# Open an app by name (OS-specific; different from opening a file)
+# Open an app by name
 _open_app() {
     if [ "$OS" = "Darwin" ]; then
         open -a "$1"
     else
-        # Look up the .desktop file for this app name, then launch it
         local desktop
         desktop=$(grep -rl "^Name=$1$" \
             /usr/share/applications "$HOME/.local/share/applications" 2>/dev/null \
@@ -53,7 +55,7 @@ _open_app() {
     fi
 }
 
-# Copy text to clipboard (tool-specific)
+# Copy text to clipboard
 _copy() {
     if   command -v pbcopy >/dev/null 2>&1; then printf '%s' "$1" | pbcopy
     elif command -v xclip  >/dev/null 2>&1; then printf '%s' "$1" | xclip -selection clipboard
@@ -68,6 +70,18 @@ _urlencode() {
         "$1" 2>/dev/null \
     || printf '%s' "$1" | sed 's/ /+/g; s/[^a-zA-Z0-9+._~-]//g'
 }
+
+# Record a launch to frecency db (fire-and-forget, Rust binary only)
+_record() {
+    [ -x "$_BIN" ] && "$_BIN" record "$1" "$2" &
+}
+
+# Get fzf color string from config (Rust binary) or use built-in default
+if [ -x "$_BIN" ]; then
+    _fzf_colors=$("$_BIN" colors 2>/dev/null)
+else
+    _fzf_colors="bg:#1e1e2e,bg+:#313244,border:#6e6a86,fg:#cad3f5,fg+:#cad3f5,gutter:#1e1e2e,hl:#8aadf4,hl+:#8aadf4,prompt:#c6a0f6,pointer:#ed8796,label:#c6a0f6"
+fi
 
 # fzf UI
 selected=$(fzf \
@@ -88,11 +102,7 @@ selected=$(fzf \
     --bind="change:reload($SEARCH {q})" \
     --bind="esc:abort" \
     --bind="ctrl-c:abort" \
-    --color="bg:#1e1e2e,bg+:#313244,border:#6e6a86" \
-    --color="fg:#cad3f5,fg+:#cad3f5,gutter:#1e1e2e" \
-    --color="hl:#8aadf4,hl+:#8aadf4" \
-    --color="prompt:#c6a0f6,pointer:#ed8796" \
-    --color="label:#c6a0f6"
+    --color="$_fzf_colors"
 )
 
 printf '\033[2J\033[H'
@@ -109,10 +119,12 @@ value="${display:2}"  # strip icon + space
 
 case "$type" in
     APP)
+        _record APP "$value"
         _open_app "$value"
         sleep 0.4
         ;;
     FILE)
+        _record FILE "$value"
         _open "$value"
         sleep 0.4
         ;;
@@ -131,6 +143,15 @@ case "$type" in
     WEB)
         _open "https://duckduckgo.com/?q=$(_urlencode "${value#DuckDuckGo: }")"
         sleep 0.4
+        ;;
+    SSH)
+        _record SSH "$value"
+        ssh "$value"
+        stty sane 2>/dev/null
+        printf '\n\033[2m[Press Enter to close]\033[0m'
+        read -r _
+        printf '\033[2J\033[H'
+        _close
         ;;
     SYS_LOCK)
         _close; sleep 0.3

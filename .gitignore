@@ -4,6 +4,8 @@ icon_map.sh
 # ランタイムキャッシュ（/tmp に生成されるが念のため）
 *.cache
 
+.DS_Store
+
 # Rust build artifacts
 launcher-search/target/
 
