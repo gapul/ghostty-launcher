@@ -1,4 +1,3 @@
-function launcher-restart --description "ランチャーのキャッシュをクリアして再起動"
-    rm -f /tmp/launcher_apps_cache.txt /tmp/launcher_recent_cache.txt
-    pkill -x fzf 2>/dev/null
+function launcher-restart --description "ランチャーを再起動"
+    bash ~/.config/launcher/core/restart.sh
 end
