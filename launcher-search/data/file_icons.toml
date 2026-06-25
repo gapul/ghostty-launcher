@@ -1,0 +1,60 @@
+# File extension → Nerd Font icon mapping
+# Special keys: _directory (folders), _unknown (unrecognized extension)
+# Add or override entries in [file_icons] in your config.toml.
+
+_directory = "󰉋"
+_unknown   = "󰈔"
+
+# Documents
+pdf        = "󰈦"
+md         = "󰍔"
+markdown   = "󰍔"
+txt        = "󰈙"
+rtf        = "󰈙"
+
+# Images
+jpg        = "󰋩"
+jpeg       = "󰋩"
+png        = "󰋩"
+gif        = "󰋩"
+svg        = "󰋩"
+webp       = "󰋩"
+heic       = "󰋩"
+
+# Code
+py         = "󰈮"
+js         = "󰈮"
+ts         = "󰈮"
+go         = "󰈮"
+rs         = "󰈮"
+sh         = "󰈮"
+fish       = "󰈮"
+rb         = "󰈮"
+java       = "󰈮"
+c          = "󰈮"
+cpp        = "󰈮"
+h          = "󰈮"
+swift      = "󰈮"
+kt         = "󰈮"
+lua        = "󰈮"
+
+# Archives
+zip        = "󰗄"
+tar        = "󰗄"
+gz         = "󰗄"
+"7z"       = "󰗄"
+rar        = "󰗄"
+
+# Video
+mp4        = "󰈫"
+mov        = "󰈫"
+avi        = "󰈫"
+mkv        = "󰈫"
+webm       = "󰈫"
+
+# Audio
+mp3        = "󰈣"
+flac       = "󰈣"
+wav        = "󰈣"
+aac        = "󰈣"
+m4a        = "󰈣"

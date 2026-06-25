@@ -13,8 +13,8 @@ section() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 section "Launcher install"
 
 chmod +x "$LAUNCHER_DIR/core/launcher.sh" \
-         "$LAUNCHER_DIR/core/search.sh" \
          "$LAUNCHER_DIR/core/restart.sh" \
+         "$LAUNCHER_DIR/core/cache-clear.sh" \
          "$LAUNCHER_DIR/core/preview.sh"
 info "permissions set"
 
@@ -25,13 +25,34 @@ SEARCH_SRC="$LAUNCHER_DIR/launcher-search"
 SEARCH_BIN="$LAUNCHER_DIR/core/launcher-search"
 
 if [ -d "$SEARCH_SRC" ] && command -v cargo >/dev/null 2>&1; then
+    # cp ではなく symlink で配置する。
+    # macOS 14+ では `cp` した未署名バイナリに `com.apple.provenance` 拡張属性が
+    # 自動付与され、AMFI によって実行時に SIGKILL される場合がある (xattr -c でも消せない)。
+    # symlink なら配置先 (= リンク自身) は inode を新規作成しないので属性が付かず、
+    # AMFI が見るのは実体側 (target/release のバイナリ) なので回避できる。
     (cd "$SEARCH_SRC" && cargo build --release 2>&1 | grep -E '^(error|warning:|Compiling|Finished)') && \
-        cp "$SEARCH_SRC/target/release/launcher-search" "$SEARCH_BIN" && \
-        chmod +x "$SEARCH_BIN" && \
-        info "Rust search binary built → core/launcher-search" || \
-        warn "Build failed — falling back to search.sh"
+        ln -sf "$SEARCH_SRC/target/release/launcher-search" "$SEARCH_BIN" && \
+        info "Rust search binary built → core/launcher-search (symlink)" || \
+        warn "Build failed — launcher-search binary required"
 elif [ -d "$SEARCH_SRC" ]; then
-    warn "cargo not found — skipping Rust build (using search.sh fallback)"
+    warn "cargo not found — build core/launcher-search manually with: cargo build --release"
+fi
+
+# ── Swift menu-items helper (macOS only) ────────────────────────────────
+if [ "$(uname)" = "Darwin" ]; then
+    section "Building menu-items (Raycast-style menu bar search)"
+    MENU_SRC="$LAUNCHER_DIR/core/menu-items.swift"
+    MENU_BIN="$LAUNCHER_DIR/core/menu-items"
+    if [ -f "$MENU_SRC" ] && command -v swiftc >/dev/null 2>&1; then
+        if swiftc -O "$MENU_SRC" -o "$MENU_BIN" 2>&1; then
+            info "menu-items built → core/menu-items"
+            warn "Grant Accessibility permission to your host terminal (Ghostty/Wezterm) in System Settings → Privacy & Security → Accessibility — without it the menu list is empty."
+        else
+            warn "swiftc build failed — menu items search will be unavailable"
+        fi
+    elif [ -f "$MENU_SRC" ]; then
+        warn "swiftc not found — menu items search will be unavailable (install Xcode CLT)"
+    fi
 fi
 
 # ── Shell setup ─────────────────────────────────────────────────────────
