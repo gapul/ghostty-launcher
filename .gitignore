@@ -14,3 +14,7 @@ core/launcher-search
 
 # User data (generated at runtime)
 frecency.txt
+clipboard_history.txt
+
+# Personal config (dotfiles が home-manager で配布。テンプレは config.toml.example)
+/config.toml
