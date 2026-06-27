@@ -140,7 +140,9 @@ _record() { "$_BIN" record "$1" "$2" & }
 export LAUNCHER_IMG_TIMEOUT LAUNCHER_CMD_TIMEOUT LAUNCHER_MAX_ARCHIVE LAUNCHER_MAX_TEXT LAUNCHER_MAX_PDF
 
 # ── fzf colors ───────────────────────────────────────────────────────────
-_fzf_colors=$("$_BIN" colors 2>/dev/null)
+# 端末の 16 色 ANSI を継承 → ghostty の Rosé Pine / Rosé Pine Dawn (macOS 外観追従)
+# に自動で乗る。config.toml [appearance] の hex 固定をやめ light/dark 自動切替に対応。
+_fzf_colors="16"
 
 _PREVIEW="$LAUNCHER_DIR/core/preview.sh"
 
