@@ -25,12 +25,15 @@ if [ -z "$DIRECT_ACTION" ] && [ -f /tmp/launcher_action_pending ]; then
     fi
 fi
 
-_BIN="$LAUNCHER_DIR/core/launcher-search"
+# バイナリの場所。LAUNCHER_SEARCH_BIN が設定されていればそれを優先する
+# (nix 等で store にビルドし core/launcher-search に依存しない運用向け)。
+# 未設定ならリポジトリ内のローカルビルド (cargo build --release) にフォールバック。
+_BIN="${LAUNCHER_SEARCH_BIN:-$LAUNCHER_DIR/core/launcher-search}"
 SEARCH="$_BIN"
 
 if [ ! -x "$_BIN" ]; then
     printf 'launcher: binary not found: %s\n' "$_BIN" >&2
-    printf 'launcher: run: cd %s/launcher-search && cargo build --release\n' "$LAUNCHER_DIR" >&2
+    printf 'launcher: set LAUNCHER_SEARCH_BIN, or run: cd %s/launcher-search && cargo build --release\n' "$LAUNCHER_DIR" >&2
     exit 1
 fi
 
