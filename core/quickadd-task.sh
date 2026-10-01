@@ -6,7 +6,7 @@
 set -u
 
 VAULT_NAME="notes"
-VAULT_PATH="/Users/yuki/Documents/notes"
+VAULT_PATH="/Users/gapul/Documents/notes"
 OBSIDIAN_BIN="/Applications/Obsidian.app/Contents/MacOS/obsidian"
 TAG_CACHE="/tmp/launcher_obsidian_tags.txt"
 TAG_CACHE_TTL=3600  # 1h
